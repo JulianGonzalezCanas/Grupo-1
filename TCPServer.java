@@ -86,6 +86,6 @@ public class TCPServer {
 
     public static void main(String[] args) {
         TCPServer server = new TCPServer();
-        server.start(2611);
+        server.start(2006);
     }
 }
