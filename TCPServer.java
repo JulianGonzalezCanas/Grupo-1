@@ -28,6 +28,7 @@ public class TCPServer {
                 ClientHandler clientHandler = new ClientHandler(clientSocket);
                 Thread clientThread = new Thread(clientHandler);
                 clientThread.start();
+                // Se queda esperando a que se conecte un cliente, cuando se conecta lo agrega al array de sockets y le inicia un hilo
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -40,6 +41,7 @@ public class TCPServer {
                 if (client.getInetAddress() != ipEnvio){
                     OutputStream outputStream = client.getOutputStream();
                     outputStream.write(message);
+                    // Se envia en broadcast el mensaje a todos los clientes menos al que lo envio
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -63,7 +65,7 @@ public class TCPServer {
                     byte[] buffer = new byte[1024];
                     int bytesRead = inputStream.read(buffer);
                     if (bytesRead == -1) {
-                        break; // El cliente ha cerrado la conexión
+                        break;
                     }
 
                     byte[] message = new byte[bytesRead];
