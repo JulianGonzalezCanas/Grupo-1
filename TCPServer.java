@@ -1,15 +1,20 @@
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.util.ArrayList;
+import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
+import java.security.*;
 
 public class TCPServer {
 
     private List<Socket> clients;
+    private HashMap<InetAddress, byte[]> keys;
 
     public TCPServer() {
         clients = new ArrayList<>();
@@ -20,9 +25,15 @@ public class TCPServer {
             ServerSocket serverSocket = new ServerSocket(port);
             System.out.println("Servidor iniciado en el puerto " + port);
 
+            KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+            generator.initialize(2048);
+            KeyPair pair = generator.generateKeyPair();
+
             while (true) {
                 Socket clientSocket = serverSocket.accept();
                 clients.add(clientSocket);
+                byte[] clientPub = exchangeKeys(pair.getPublic(), clientSocket);
+                keys.put(clientSocket.getInetAddress(), clientPub);
                 System.out.println("Nuevo cliente conectado: " + clientSocket.getInetAddress().getHostAddress());
 
                 ClientHandler clientHandler = new ClientHandler(clientSocket);
@@ -30,9 +41,20 @@ public class TCPServer {
                 clientThread.start();
                 // Se queda esperando a que se conecte un cliente, cuando se conecta lo agrega al array de sockets y le inicia un hilo
             }
-        } catch (IOException e) {
+        } catch (IOException | NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
+    }
+
+    public byte[] exchangeKeys(PublicKey serverPub, Socket socketCliente) throws IOException {
+        OutputStream outputStream = socketCliente.getOutputStream();
+        outputStream.write(serverPub.getEncoded());
+
+        BufferedReader entrada = new BufferedReader(new InputStreamReader(socketCliente.getInputStream()));
+        String respuesta = entrada.readLine();
+        byte[] publicKey = respuesta.getBytes();
+
+        return publicKey;
     }
 
     public void broadcastMessage(byte[] message, InetAddress ipEnvio) {
@@ -86,6 +108,6 @@ public class TCPServer {
 
     public static void main(String[] args) {
         TCPServer server = new TCPServer();
-        server.start(2006);
+        server.start(2556);
     }
 }
