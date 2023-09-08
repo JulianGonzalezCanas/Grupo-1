@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="27e1c30b-a545-471b-b4b9-882ff622a221" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/HiloEnvio.java" beforeDir="false" afterPath="$PROJECT_DIR$/HiloEnvio.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HiloRecibo.java" beforeDir="false" afterPath="$PROJECT_DIR$/HiloRecibo.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Mensaje.java" beforeDir="false" afterPath="$PROJECT_DIR$/Mensaje.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/TCPClient.java" beforeDir="false" afterPath="$PROJECT_DIR$/TCPClient.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/TCPServer.java" beforeDir="false" afterPath="$PROJECT_DIR$/TCPServer.java" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectId" id="2V6y0nC24Q3McSe7D32pOVrdCyh" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "last_opened_file_path": "/home/caronegonzalez/Escritorio/Grupo-1"
+  }
+}]]></component>
+  <component name="RunManager" selected="Application.TCPClient">
+    <configuration name="TCPClient" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="TCPClient" />
+      <module name="Grupo-1" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="TCPServer" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="TCPServer" />
+      <module name="Grupo-1" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Application.TCPClient" />
+        <item itemvalue="Application.TCPServer" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="27e1c30b-a545-471b-b4b9-882ff622a221" name="Changes" comment="" />
+      <created>1694170603379</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1694170603379</updated>
+    </task>
+    <servers />
+  </component>
+</project>
