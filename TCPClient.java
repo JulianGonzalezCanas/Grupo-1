@@ -31,7 +31,7 @@ public class TCPClient {
         Socket socketCliente = null;
 
         try {
-            socketCliente = new Socket("192.168.0.152", 2006);
+            socketCliente = new Socket("172.16.255.150", 2921);
 
         } catch (IOException e) {
             System.err.println("No puede establer canales de E/S para la conexion");
@@ -41,7 +41,7 @@ public class TCPClient {
         serverPublicKey = recibirLlave(socketCliente);
         enviarLlave(socketCliente, publicKey);
 
-        Thread hiloEscucha = new Thread(new HiloRecibo(socketCliente));
+        Thread hiloEscucha = new Thread(new HiloRecibo(socketCliente, serverPublicKey, privateKey));
 
         Thread hiloEnvio = new Thread(new HiloEnvio(socketCliente, serverPublicKey, privateKey));
 

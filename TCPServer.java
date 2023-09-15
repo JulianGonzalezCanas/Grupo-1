@@ -2,10 +2,7 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -50,7 +47,6 @@ public class TCPServer {
 
                 clients.put(clientSocket, publicaCliente);
                 System.out.println("Nuevo cliente conectado: " + clientSocket.getInetAddress().getHostAddress());
-                System.out.println(publicaCliente);
 
                 ClientHandler clientHandler = new ClientHandler(clientSocket);
                 Thread clientThread = new Thread(clientHandler);
@@ -87,15 +83,12 @@ public class TCPServer {
         return keyFactory.generatePublic(keySpec);
     }
 
-    public boolean verificarMensaje(Mensaje mensaje, Socket cliente) throws InvalidKeyException, NoSuchPaddingException, NoSuchAlgorithmException, IllegalBlockSizeException, BadPaddingException {
-        boolean autenticado = false;
-        System.out.println("entro verificacion");
-
+    public String verificarMensaje(Mensaje mensaje, Socket cliente) throws InvalidKeyException, NoSuchPaddingException, NoSuchAlgorithmException, IllegalBlockSizeException, BadPaddingException {
         Cipher decryptCipher = Cipher.getInstance("RSA");
         decryptCipher.init(Cipher.DECRYPT_MODE, privateKey);
 
         Cipher decryptCipher2 = Cipher.getInstance("RSA");
-        decryptCipher.init(Cipher.DECRYPT_MODE, clients.get(cliente));
+        decryptCipher2.init(Cipher.DECRYPT_MODE, clients.get(cliente));
 
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
 
@@ -110,20 +103,28 @@ public class TCPServer {
 
         if (mensajeHasheado.equals(mensajeDesencriptadoHasheado)){
             System.out.println("Mensaje recibido: " + new String(mensajeDesencriptado));
-            autenticado = true;
+            return mensajeDesencriptado;
         }
-        return autenticado;
+        return null;
     }
 
-    public void broadcastMessage(byte[] message, InetAddress ipEnvio) {
+    public void broadcastMessage(String mensaje, InetAddress ipEnvio) {
+
+        byte[] mensajeEncriptadoPublicaCliente;
+        byte[] mensajeHasheado;
         for (Map.Entry<Socket, PublicKey> client: clients.entrySet()) {
             try {
                 if (client.getKey().getInetAddress() != ipEnvio){
-                    OutputStream outputStream = client.getKey().getOutputStream();
-                    outputStream.write(message);
+
+                    mensajeEncriptadoPublicaCliente = encriptarMensaje(mensaje, client.getValue());
+                    mensajeHasheado = hashearMensajeEncriptar(mensaje, privateKey);
+                    Mensaje mensajeCompleto = new Mensaje(mensajeEncriptadoPublicaCliente, mensajeHasheado);
+
+                    ObjectOutputStream outputStream = new ObjectOutputStream(client.getKey().getOutputStream());
+                    outputStream.writeObject(mensajeCompleto);
                     // Se envia en broadcast el mensaje a todos los clientes menos al que lo envio
                 }
-            } catch (IOException e) {
+            } catch (Throwable e) {
                 e.printStackTrace();
             }
         }
@@ -142,27 +143,24 @@ public class TCPServer {
                 ObjectInputStream inputStream = new ObjectInputStream(clientSocket.getInputStream());
 
                 while (true) {
-                    boolean autenticado = false;
 
                     Object object = inputStream.readObject();
                     Mensaje mensajeRecibido = (Mensaje) object;
+                    String mensajeAutenticado;
+                    mensajeAutenticado = verificarMensaje(mensajeRecibido, clientSocket);
 
-                    String mensajeDesencriptado = new String(mensajeRecibido.getMensajeEncriptado(), StandardCharsets.UTF_8);
-                    String mensajeDesencriptado2 = new String(mensajeRecibido.getMensajeHasheado(), StandardCharsets.UTF_8);
+                    if (mensajeAutenticado != null){
+                        broadcastMessage(mensajeAutenticado, clientSocket.getInetAddress());
+                    } else{
+                        break;
+                    }
 
-                    System.out.println(mensajeDesencriptado);
-                    System.out.println(mensajeDesencriptado2);
-
-                    autenticado = verificarMensaje(mensajeRecibido, clientSocket);
-
-
-                    //broadcastMessage(message, clientSocket.getInetAddress());
                 }
 
-                /*clients.remove(clientSocket);
+                clients.remove(clientSocket);
                 System.out.println("Cliente desconectado: " + clientSocket.getInetAddress().getHostAddress());
                 clientSocket.close();
-                */
+
 
             } catch (Throwable e) {
                 e.printStackTrace();
@@ -170,8 +168,30 @@ public class TCPServer {
         }
     }
 
+    public byte[] encriptarMensaje(String mensaje, PublicKey publicKey) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+        Cipher encryptCipher = Cipher.getInstance("RSA");
+        encryptCipher.init(Cipher.ENCRYPT_MODE, publicKey);
+
+        byte[] mensajeBytes = mensaje.getBytes(StandardCharsets.UTF_8);
+        byte[] mensajeEncriptado = encryptCipher.doFinal(mensajeBytes);
+
+        return mensajeEncriptado;
+    }
+
+    public byte[] hashearMensajeEncriptar(String mensaje, PrivateKey privateKey) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+        Cipher encryptCipher = Cipher.getInstance("RSA");
+        encryptCipher.init(Cipher.ENCRYPT_MODE, privateKey);
+
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] mensajeHasheado = digest.digest(mensaje.getBytes(StandardCharsets.UTF_8));
+
+        byte[] mensajeEncriptado = encryptCipher.doFinal(mensajeHasheado);
+
+        return mensajeEncriptado;
+    }
+
     public static void main(String[] args) {
         TCPServer server = new TCPServer();
-        server.start(2006);
+        server.start(2921);
     }
 }

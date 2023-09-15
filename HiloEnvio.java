@@ -23,7 +23,6 @@ public class HiloEnvio implements Runnable {
     @Override
     public void run() {
         try {
-            System.out.println("entro hilo envio");
             ObjectOutputStream outputStream = new ObjectOutputStream(socketCliente.getOutputStream());
 
             BufferedReader entradaUsuario = new BufferedReader(new InputStreamReader(System.in));
@@ -35,15 +34,10 @@ public class HiloEnvio implements Runnable {
 
             while (true) {
                 mensaje = entradaUsuario.readLine();
+
                 mensajeEncriptadoPublicaServer = encriptarMensaje(mensaje, serverPublicKey);
                 mensajeHasheado = hashearMensajeEncriptar(mensaje, privateKey);
                 Mensaje mensajeCompleto = new Mensaje(mensajeEncriptadoPublicaServer, mensajeHasheado);
-
-                String mensajeDesencriptado = new String(mensajeCompleto.getMensajeEncriptado(), StandardCharsets.UTF_8);
-                String mensajeDesencriptado2 = new String(mensajeCompleto.getMensajeHasheado(), StandardCharsets.UTF_8);
-
-                System.out.println(mensajeDesencriptado);
-                System.out.println(mensajeDesencriptado2);
 
                 outputStream.writeObject(mensajeCompleto);
                 if (mensaje.equalsIgnoreCase("fin")) {
@@ -56,7 +50,6 @@ public class HiloEnvio implements Runnable {
     }
 
     public byte[] encriptarMensaje(String mensaje, PublicKey publicKey) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
-        System.out.println("entro encriptar");
         Cipher encryptCipher = Cipher.getInstance("RSA");
         encryptCipher.init(Cipher.ENCRYPT_MODE, publicKey);
 
@@ -67,7 +60,6 @@ public class HiloEnvio implements Runnable {
     }
 
     public byte[] hashearMensajeEncriptar(String mensaje, PrivateKey privateKey) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
-        System.out.println("entro hashear");
         Cipher encryptCipher = Cipher.getInstance("RSA");
         encryptCipher.init(Cipher.ENCRYPT_MODE, privateKey);
 
