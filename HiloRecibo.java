@@ -14,7 +14,6 @@ public class HiloRecibo implements Runnable {
     @Override
     public void run() {
         try {
-            System.out.println("Entro hilo escucha");
             BufferedReader entrada = new BufferedReader(new InputStreamReader(socketCliente.getInputStream()));
             String respuesta;
 

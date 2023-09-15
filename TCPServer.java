@@ -1,23 +1,39 @@
-import java.io.*;
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.List;
 import java.security.*;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.*;
 
 public class TCPServer {
 
-    private List<Socket> clients;
-    private HashMap<InetAddress, byte[]> keys;
+    private HashMap<Socket, PublicKey> clients;
 
-    public TCPServer() {
-        clients = new ArrayList<>();
+    private static KeyPair keyPair;
+
+    static {
+        try {
+            keyPair = generarLlaves();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static PublicKey publicKey = keyPair.getPublic();
+    private static PrivateKey privateKey = keyPair.getPrivate();
+
+    public TCPServer(){
+        clients = new HashMap<>();
     }
 
     public void start(int port) {
@@ -25,43 +41,85 @@ public class TCPServer {
             ServerSocket serverSocket = new ServerSocket(port);
             System.out.println("Servidor iniciado en el puerto " + port);
 
-            KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
-            generator.initialize(2048);
-            KeyPair pair = generator.generateKeyPair();
-
             while (true) {
                 Socket clientSocket = serverSocket.accept();
-                clients.add(clientSocket);
-                byte[] clientPub = exchangeKeys(pair.getPublic(), clientSocket);
-                keys.put(clientSocket.getInetAddress(), clientPub);
+                PublicKey publicaCliente = null;
+
+                enviarLlave(clientSocket, publicKey);
+                publicaCliente = recibirLlave(clientSocket);
+
+                clients.put(clientSocket, publicaCliente);
                 System.out.println("Nuevo cliente conectado: " + clientSocket.getInetAddress().getHostAddress());
+                System.out.println(publicaCliente);
 
                 ClientHandler clientHandler = new ClientHandler(clientSocket);
                 Thread clientThread = new Thread(clientHandler);
                 clientThread.start();
                 // Se queda esperando a que se conecte un cliente, cuando se conecta lo agrega al array de sockets y le inicia un hilo
             }
-        } catch (IOException | NoSuchAlgorithmException e) {
+        } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
             e.printStackTrace();
         }
     }
 
-    public byte[] exchangeKeys(PublicKey serverPub, Socket socketCliente) throws IOException {
-        OutputStream outputStream = socketCliente.getOutputStream();
-        outputStream.write(serverPub.getEncoded());
+    public static KeyPair generarLlaves() throws NoSuchAlgorithmException {
+        KeyPairGenerator keyPairGenerator= KeyPairGenerator.getInstance("RSA");
+        keyPairGenerator.initialize(2048);
+        KeyPair pair = keyPairGenerator.generateKeyPair();
 
-        BufferedReader entrada = new BufferedReader(new InputStreamReader(socketCliente.getInputStream()));
-        String respuesta = entrada.readLine();
-        byte[] publicKey = respuesta.getBytes();
+        return pair;
+    }
 
-        return publicKey;
+    public void enviarLlave(Socket socket, PublicKey publicaServer) throws IOException {
+        byte[] publicKeyBytes = publicKey.getEncoded();
+        OutputStream outputStream = socket.getOutputStream();
+        outputStream.write(publicKeyBytes);
+    }
+
+    public PublicKey recibirLlave(Socket cliente) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
+        InputStream inputStream = cliente.getInputStream();
+        byte[] publicKeyBytes = new byte[2048];
+        inputStream.read(publicKeyBytes);
+
+        // Convierte los bytes en una clave pública
+        X509EncodedKeySpec keySpec = new X509EncodedKeySpec(publicKeyBytes);
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        return keyFactory.generatePublic(keySpec);
+    }
+
+    public boolean verificarMensaje(Mensaje mensaje, Socket cliente) throws InvalidKeyException, NoSuchPaddingException, NoSuchAlgorithmException, IllegalBlockSizeException, BadPaddingException {
+        boolean autenticado = false;
+        System.out.println("entro verificacion");
+
+        Cipher decryptCipher = Cipher.getInstance("RSA");
+        decryptCipher.init(Cipher.DECRYPT_MODE, privateKey);
+
+        Cipher decryptCipher2 = Cipher.getInstance("RSA");
+        decryptCipher.init(Cipher.DECRYPT_MODE, clients.get(cliente));
+
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+
+        byte[] mensajeDesencriptadoByte = decryptCipher.doFinal(mensaje.getMensajeEncriptado());
+        String mensajeDesencriptado = new String(mensajeDesencriptadoByte, StandardCharsets.UTF_8);
+
+        byte[] mensajeHasheadoByte = decryptCipher2.doFinal(mensaje.getMensajeHasheado());
+        String mensajeHasheado = new String(mensajeHasheadoByte, StandardCharsets.UTF_8);
+
+        byte[] mensajeDesencriptadoHasheadoByte = digest.digest(mensajeDesencriptado.getBytes(StandardCharsets.UTF_8));
+        String mensajeDesencriptadoHasheado = new String(mensajeDesencriptadoHasheadoByte, StandardCharsets.UTF_8);
+
+        if (mensajeHasheado.equals(mensajeDesencriptadoHasheado)){
+            System.out.println("Mensaje recibido: " + new String(mensajeDesencriptado));
+            autenticado = true;
+        }
+        return autenticado;
     }
 
     public void broadcastMessage(byte[] message, InetAddress ipEnvio) {
-        for (Socket client : clients) {
+        for (Map.Entry<Socket, PublicKey> client: clients.entrySet()) {
             try {
-                if (client.getInetAddress() != ipEnvio){
-                    OutputStream outputStream = client.getOutputStream();
+                if (client.getKey().getInetAddress() != ipEnvio){
+                    OutputStream outputStream = client.getKey().getOutputStream();
                     outputStream.write(message);
                     // Se envia en broadcast el mensaje a todos los clientes menos al que lo envio
                 }
@@ -81,26 +139,32 @@ public class TCPServer {
         @Override
         public void run() {
             try {
-                InputStream inputStream = clientSocket.getInputStream();
+                ObjectInputStream inputStream = new ObjectInputStream(clientSocket.getInputStream());
 
                 while (true) {
-                    byte[] buffer = new byte[1024];
-                    int bytesRead = inputStream.read(buffer);
-                    if (bytesRead == -1) {
-                        break;
-                    }
+                    boolean autenticado = false;
 
-                    byte[] message = new byte[bytesRead];
-                    System.arraycopy(buffer, 0, message, 0, bytesRead);
-                    System.out.println("Mensaje recibido: " + new String(message));
+                    Object object = inputStream.readObject();
+                    Mensaje mensajeRecibido = (Mensaje) object;
 
-                    broadcastMessage(message, clientSocket.getInetAddress());
+                    String mensajeDesencriptado = new String(mensajeRecibido.getMensajeEncriptado(), StandardCharsets.UTF_8);
+                    String mensajeDesencriptado2 = new String(mensajeRecibido.getMensajeHasheado(), StandardCharsets.UTF_8);
+
+                    System.out.println(mensajeDesencriptado);
+                    System.out.println(mensajeDesencriptado2);
+
+                    autenticado = verificarMensaje(mensajeRecibido, clientSocket);
+
+
+                    //broadcastMessage(message, clientSocket.getInetAddress());
                 }
 
-                clients.remove(clientSocket);
+                /*clients.remove(clientSocket);
                 System.out.println("Cliente desconectado: " + clientSocket.getInetAddress().getHostAddress());
                 clientSocket.close();
-            } catch (IOException e) {
+                */
+
+            } catch (Throwable e) {
                 e.printStackTrace();
             }
         }
@@ -108,6 +172,6 @@ public class TCPServer {
 
     public static void main(String[] args) {
         TCPServer server = new TCPServer();
-        server.start(2556);
+        server.start(2006);
     }
 }
