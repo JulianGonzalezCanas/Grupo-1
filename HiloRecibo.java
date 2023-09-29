@@ -1,7 +1,4 @@
-import javax.crypto.BadPaddingException;
-import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
+import javax.crypto.*;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -15,11 +12,13 @@ public class HiloRecibo implements Runnable {
     private Socket socketCliente;
     private PublicKey publicKey;
     private PrivateKey privateKey;
+    private SecretKey secretKey;
 
-    public HiloRecibo(Socket socketCliente, PublicKey publicKey, PrivateKey privateKey) {
+    public HiloRecibo(Socket socketCliente, PublicKey publicKey, PrivateKey privateKey, SecretKey secretKey) {
         this.socketCliente = socketCliente;
         this.publicKey = publicKey;
         this.privateKey = privateKey;
+        this.secretKey = secretKey;
     }
 
     @Override
@@ -31,17 +30,17 @@ public class HiloRecibo implements Runnable {
 
                 Object object = inputStream.readObject();
                 Mensaje mensajeRecibido = (Mensaje) object;
-                verificarMensaje(mensajeRecibido, socketCliente);
+                verificarMensaje(mensajeRecibido);
             }
         } catch (Throwable e) {
             e.printStackTrace();
         }
     }
 
-    public void verificarMensaje(Mensaje mensaje, Socket cliente) throws InvalidKeyException, NoSuchPaddingException, NoSuchAlgorithmException, IllegalBlockSizeException, BadPaddingException {
+    public void verificarMensaje(Mensaje mensaje) throws InvalidKeyException, NoSuchPaddingException, NoSuchAlgorithmException, IllegalBlockSizeException, BadPaddingException {
 
-        Cipher decryptCipher = Cipher.getInstance("RSA");
-        decryptCipher.init(Cipher.DECRYPT_MODE, this.privateKey);
+        Cipher decryptCipher = Cipher.getInstance("AES");
+        decryptCipher.init(Cipher.DECRYPT_MODE, this.secretKey);
 
         Cipher decryptCipher2 = Cipher.getInstance("RSA");
         decryptCipher2.init(Cipher.DECRYPT_MODE, this.publicKey);

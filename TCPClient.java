@@ -1,8 +1,12 @@
+import javax.crypto.*;
+import javax.crypto.spec.SecretKeySpec;
 import java.net.*;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Arrays;
 
 public class TCPClient {
     private static KeyPair keyPair;
@@ -18,6 +22,7 @@ public class TCPClient {
     private static PublicKey publicKey = keyPair.getPublic();
     private static PrivateKey privateKey = keyPair.getPrivate();
     private static PublicKey serverPublicKey;
+    private static SecretKey keySym;
 
     public static KeyPair generarLlaves() throws NoSuchAlgorithmException {
         KeyPairGenerator keyPairGenerator= KeyPairGenerator.getInstance("RSA");
@@ -27,11 +32,11 @@ public class TCPClient {
         return pair;
     }
 
-    public static void main(String[] args) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
+    public static void main(String[] args) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException, ClassNotFoundException {
         Socket socketCliente = null;
 
         try {
-            socketCliente = new Socket("172.16.255.150", 2921);
+            socketCliente = new Socket("192.168.0.152", 2921);
 
         } catch (IOException e) {
             System.err.println("No puede establer canales de E/S para la conexion");
@@ -40,10 +45,12 @@ public class TCPClient {
 
         serverPublicKey = recibirLlave(socketCliente);
         enviarLlave(socketCliente, publicKey);
+        recibirLlaveSim(socketCliente);
 
-        Thread hiloEscucha = new Thread(new HiloRecibo(socketCliente, serverPublicKey, privateKey));
 
-        Thread hiloEnvio = new Thread(new HiloEnvio(socketCliente, serverPublicKey, privateKey));
+        Thread hiloEscucha = new Thread(new HiloRecibo(socketCliente, serverPublicKey, privateKey, keySym));
+
+        Thread hiloEnvio = new Thread(new HiloEnvio(socketCliente, serverPublicKey, privateKey, keySym));
 
         hiloEscucha.start();
         hiloEnvio.start();
@@ -73,5 +80,35 @@ public class TCPClient {
         byte[] publicKeyBytes = publicKey.getEncoded();
         OutputStream outputStream = socket.getOutputStream();
         outputStream.write(publicKeyBytes);
+    }
+
+    private static void recibirLlaveSim(Socket cliente) throws IOException, ClassNotFoundException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
+        ObjectInputStream inputStream = new ObjectInputStream(cliente.getInputStream());
+
+        Object object = inputStream.readObject();
+        Mensaje llaves = (Mensaje) object;
+        verificarLlave(llaves);
+    }
+
+    private static void verificarLlave(Mensaje llaves) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+        Cipher decryptCipher = Cipher.getInstance("RSA");
+        decryptCipher.init(Cipher.DECRYPT_MODE, privateKey);
+
+        Cipher decryptCipher2 = Cipher.getInstance("RSA");
+        decryptCipher2.init(Cipher.DECRYPT_MODE, serverPublicKey);
+
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+
+        byte[] llaveDesencriptada = decryptCipher.doFinal(llaves.getMensajeEncriptado());
+
+        byte[] llaveHasheada = decryptCipher2.doFinal(llaves.getMensajeHasheado());
+
+        byte[] llaveDesencriptadaHasheada = digest.digest(llaveDesencriptada);
+
+        if (Arrays.equals(llaveHasheada, llaveDesencriptadaHasheada)){
+            SecretKey secretKey = new SecretKeySpec(llaveDesencriptada, "AES");
+            keySym = secretKey;
+            System.out.println("La llave simetrica ha sido verificada y guardada");
+        }
     }
 }
