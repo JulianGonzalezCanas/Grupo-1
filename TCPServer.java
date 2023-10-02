@@ -152,18 +152,19 @@ public class TCPServer {
         for (Map.Entry<Socket, PublicKey> client: clients.entrySet()) {
             try {
 
-
+                if (client.getKey().getInetAddress() != ipEnvio){
                     mensajeEncriptadoSimetrica = encriptarMensaje(mensaje, symKey);
                     mensajeHasheado = hashearMensajeEncriptar(mensaje);
                     Mensaje mensajeCompleto = new Mensaje(mensajeEncriptadoSimetrica, mensajeHasheado);
 
-                if (!clientsOutputs.containsKey(client.getKey())){
-                    clientsOutputs.put(client.getKey(), new ObjectOutputStream(client.getKey().getOutputStream()));
-                    clientsOutputs.get(client.getKey()).writeObject(mensajeCompleto);
-                } else{
-                    clientsOutputs.get(client.getKey()).writeObject(mensajeCompleto);
-                }
+                    if (!clientsOutputs.containsKey(client.getKey())){
+                        clientsOutputs.put(client.getKey(), new ObjectOutputStream(client.getKey().getOutputStream()));
+                        clientsOutputs.get(client.getKey()).writeObject(mensajeCompleto);
+                    } else{
+                        clientsOutputs.get(client.getKey()).writeObject(mensajeCompleto);
+                    }
                     // Se envia en broadcast el mensaje a todos los clientes menos al que lo envio
+                }
 
             } catch (Throwable e) {
                 e.printStackTrace();
