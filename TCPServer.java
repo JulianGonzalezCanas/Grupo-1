@@ -13,6 +13,7 @@ import java.util.*;
 public class TCPServer {
 
     private HashMap<Socket, PublicKey> clients;
+    private HashMap<Socket, ObjectOutputStream> clientsOutputs;
 
     private static KeyPair keyPair;
 
@@ -39,6 +40,7 @@ public class TCPServer {
 
     public TCPServer(){
         clients = new HashMap<>();
+        clientsOutputs = new HashMap<>();
     }
 
     public void start(int port) {
@@ -149,16 +151,20 @@ public class TCPServer {
         byte[] mensajeHasheado;
         for (Map.Entry<Socket, PublicKey> client: clients.entrySet()) {
             try {
-                if (client.getKey().getInetAddress() != ipEnvio){
+
 
                     mensajeEncriptadoSimetrica = encriptarMensaje(mensaje, symKey);
                     mensajeHasheado = hashearMensajeEncriptar(mensaje);
                     Mensaje mensajeCompleto = new Mensaje(mensajeEncriptadoSimetrica, mensajeHasheado);
 
-                    ObjectOutputStream outputStream = new ObjectOutputStream(client.getKey().getOutputStream());
-                    outputStream.writeObject(mensajeCompleto);
-                    // Se envia en broadcast el mensaje a todos los clientes menos al que lo envio
+                if (!clientsOutputs.containsKey(client.getKey())){
+                    clientsOutputs.put(client.getKey(), new ObjectOutputStream(client.getKey().getOutputStream()));
+                    clientsOutputs.get(client.getKey()).writeObject(mensajeCompleto);
+                } else{
+                    clientsOutputs.get(client.getKey()).writeObject(mensajeCompleto);
                 }
+                    // Se envia en broadcast el mensaje a todos los clientes menos al que lo envio
+
             } catch (Throwable e) {
                 e.printStackTrace();
             }
